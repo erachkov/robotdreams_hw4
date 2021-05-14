@@ -34,15 +34,28 @@ class CurrencyHttpOperator(SimpleHttpOperator):
         #                     self.headers,
         #                     self.extra_options)
 
-        print(response.json())
 
         if self.log_response:
             self.log.info(response.text)
         if self.response_check:
             if not self.response_check(response):
                 raise AirflowException("Response check returned False.")
+
+        self.log.info(f"Respond data - {response}")
+        execution_date_str = context["execution_date"].strftime("%Y-%m-%d")
+        path_full = os.path.join(self.path, execution_date_str)
+
+        self.log.info(f"Creating dir if not exists - {path_full}")
+        os.makedirs(path_full, exist_ok=True)
+        filename = os.path.join(path_full,'product.json')
+
+        self.log.info(f"Creating directory if does not exist - {path_full}")
+        with open(filename, mode='a+') as file:
+            json.dump(response.json(), file)
+
         if self.xcom_push_flag:
-            return response.text
+            self.log.info(f"Push to XCOM file path - {filename}")
+            return os.listdir(path_full)
 
     def _get_jwt_token(self):
         http_auth = HttpHook('POST', http_conn_id=self.http_conn_id)
